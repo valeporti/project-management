@@ -1,0 +1,146 @@
+'***/
+'* Función para contar los archivos hay en la ruta especificada
+'***\
+Function CuantosArchivos(ruta As String) As Integer
+
+    'se obiene el primer archivo buscado en la ruta seleccionada
+    dirarchivos = Dir(ruta & "\")
+    'MsgBox (lista1)
+    CuantosArchivos = 0
+    'Función que mientras haya archivos los cuenta
+    Do While dirarchivos <> ""
+        CuantosArchivos = CuantosArchivos + 1
+        'declarar "dir()" vacía llama al siguiente miembro de la lista
+        dirarchivos = Dir()
+    Loop
+End Function
+
+'***/
+'* Función que regresa un string con terminaciones de tipo "\n" para que cuando se muestren, salgan uno abajo del otro
+'***\
+Function enlistar(lista() As String) As String
+    
+    Dim i As Integer
+    For i = LBound(lista) To UBound(lista)
+        enlistar = enlistar & lista(i) & vbCrLf
+    Next i
+
+End Function
+
+'****/
+'* Función que busca a lo largo de una fila la palabra especificada hasta llegar al final de la fila
+'****\
+Function buscar_en_fila(fila As Integer, palabra As String, last_col As Integer, ubicación_si_error As String) As Integer
+    
+    Dim palabra_deseada As String
+    palabra_deseada = ""
+    Do While (palabra_deseada <> palabra)
+        buscar_en_fila = buscar_en_fila + 1
+        palabra_deseada = Cells(fila, buscar_en_fila)
+            If (buscar_en_fila > last_col) Then
+                MsgBox ("No se encontró la palabra ----> " & palabra _
+                    & Chr(10) & Chr(10) & "Puede ser que la fila elegida para la acción sea la incorrecta" & Chr(10) & _
+                    "o que la ultima columna considerarda en realidad ya no es más la última" & Chr(10) & _
+                    "o que se está abriendo una hoja equivocada a la deseada para esta acción" & Chr(10) & _
+                    "o que la plabra cambió por completo (otro idioma, un espacio de más, un char diferente al considerado" _
+                    & Chr(10) & Chr(10) & "  => El error está en: " & ubicación_si_error & Chr(10) & Chr(10) & _
+                    "Se saldrá por completo, revisar y volver a intentar")
+                End
+            End If
+    Loop
+
+End Function
+
+Function buscar_en_columna(col As Integer, palabra As String, last_row As Integer, ubicación_si_error As String) As Integer
+    
+    Dim primera_palabra As String, st_row As Integer
+    
+    primera_palabra = ""
+    st_row = 0
+    Do While ((primera_palabra <> palabra) Or (st_row > last_row))
+        st_row = st_row + 1
+        primera_palabra = Cells(st_row, col) '<- se buca en la columna 2, podría ser este el error si existe
+    Loop
+    If (primera_palabra <> palabra) Then
+        MsgBox ("No se encontró la palabra ----> " & palabra _
+            & Chr(10) & Chr(10) & "Puede ser que la columna elegida para la acción sea la incorrecta" & Chr(10) & _
+            "o que la ultima fila considerarda en realidad ya no es más la última" & Chr(10) & _
+            "o que se está abriendo una hoja equivocada a la deseada para esta acción" & Chr(10) & _
+            "o que la plabra cambió por completo (otro idioma, un espacio de más, un char diferente al considerado" _
+            & Chr(10) & Chr(10) & "  => El error está en: " & ubicación_si_error & Chr(10) & Chr(10) & _
+            "Se saldrá por completo, revisar y volver a intentar")
+        End
+    End If
+    buscar_en_columna = st_row
+    
+End Function
+
+
+'***/
+'* Función que permite usar code names de otros workbooks ya que en realidad, la única manera de usar un
+'* coddename es en el mismo workbook donde está escrito el código de vba
+'* Return Value --> worksheet where to work in
+'***\
+Function GetWsFromCodeName(wb As Workbook, codename As String) As Excel.Worksheet
+
+    Dim ws As Excel.Worksheet
+    
+    For Each ws In wb.Worksheets
+        If ws.codename = codename Then
+            Set GetWsFromCodeName = ws
+            Exit For
+        End If
+    Next ws
+    
+End Function
+
+'****/
+'* Función que, regresa un string, después de extraer el el dia mes y año de un string con formato: mm/dd/aaaa
+'* Como segunda utilidad (utilidad agregada) se hará prueba lógica para evitar problemas con el formato el cual al parecer
+'* puede venir de la forma "mm/dd/aaaa" o en la forma "dd/mm/aaaa"
+'****\
+Function convertir_fecha_texto(fecha_a_convertir As String) As String
+    
+    Dim año As String, dia As String
+    Dim primer_signo As Integer, segundo_signo As Integer
+    
+    año = Right(fecha_a_convertir, 4)
+    primer_signo = InStr(1, fecha_a_convertir, "/")
+    segundo_signo = InStr(primer_signo + 1, fecha_a_convertir, "/")
+    mes = Left(fecha_a_convertir, primer_signo - 1)
+    dia = Mid(fecha_a_convertir, primer_signo + 1, segundo_signo - primer_signo - 1)
+    Call pruebaLogicaFecha(año, mes, dia)
+    If ((primer_signo - 1) < 2) Then
+        mes = "0" & mes
+    End If
+    If ((segundo_signo - primer_signo - 1) < 2) Then
+        dia = "0" & dia
+    End If
+    convertir_fecha_texto = año & "-" & mes & "-" & dia
+    'convertir_fecha_texto = Format(convertir_fecha_texto, "yyyy-mm-dd")
+    
+End Function
+
+'****/
+'* Abre el archivo de Proyectos, y lo analiza
+'****\
+Function verificar_actualizacion_proyectos(ws As Worksheet) As Boolean
+
+    Application.EnableEvents = False
+        ws.Cells(2, 5).Value = True
+        ws.Cells(4, 5).Value = True
+        ws.Cells(6, 5).Value = False
+        ws.Cells(11, 1).Value = False
+    Application.EnableEvents = True
+    'hacer lo que sea para activar el evento y que comience el analisis "hosteado" por el workbook de Proyectos
+    ws.Cells(8, 5).ClearContents
+    verificar_actualizacion_proyectos = ws.Cells(11, 1).Value
+    'ya que nos vamos, cambiar valores
+    Application.EnableEvents = False
+        ws.Cells(2, 5).Value = False
+        ws.Cells(4, 5).Value = False
+        ws.Cells(6, 5).Value = False
+        ws.Cells(11, 1).Value = False
+    Application.EnableEvents = True
+
+End Function

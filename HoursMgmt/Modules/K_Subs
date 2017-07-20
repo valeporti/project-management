@@ -1,0 +1,245 @@
+'****/
+'* Enlistar en un array los archivos existentes en la carpeta seleccionada
+'****\
+Public Sub lista_archivos(ruta As String, lista() As String, dir_arch As Variant)
+    
+    Dim l As Integer
+    
+    l = 0
+    dir_arch = Dir(ruta & "\")
+    Do While dir_arch <> ""
+        lista(l) = ruta & "\" & dir_arch
+        dir_arch = Dir()
+        l = l + 1
+    Loop
+    
+End Sub
+
+'****/
+'* Busca celdas vacías, elimina la completa fila formando parte de esa celda
+'* para quitar posibles blancos hasta llegar a un límite
+'* ¡¡ Lo malo, se podrían borrar cosas que no queremos si la columna que está leyendo no tiene inforamción
+'*     " Por mala suerte!!
+'****\
+Public Sub buscar_blancos(en_hoja As Excel.Worksheet, last_row As Integer, ByVal key_col As Integer, ByVal from_row As Integer)
+
+'---> Se puede usar una interacción con el usuario apra saber si quiere o no borrar las filas
+'     Cuantos espacios se borrarán o si no hay espacios
+
+    Dim search_full As String, j As Integer
+    search_full = ""
+
+    For j = from_row To max_limit_row
+        search_full = Cells(j, key_col).Value
+        If (search_full = Empty) Then
+            Rows(last_row + 1).Select
+            selection.Delete Shift:=xlUp
+            j = j + 1
+        Else
+            last_row = Cells(last_row + 1, key_col).End(xlDown).row
+            j = 1
+        End If
+    Next j
+End Sub
+
+'****/
+'* Unicamente comprueba que haya un filtro y en caso positivo lo quita
+'****\
+Public Sub desactivar_filtro()
+
+    If ActiveSheet.AutoFilterMode Then
+        ActiveSheet.Range("A1").AutoFilter
+    End If
+
+End Sub
+
+'****/
+'* Quita filtros por si existen ya que en realidad la búsqueda de la última fila es incorrecta si están los filtros
+'****\
+Public Sub quitar_filtros(hoja As Excel.Worksheet, nombre_tabla_dinámica As String)
+
+    Dim pf As PivotField
+    Set pf = hoja.PivotTables(nombre_tabla_dinámica).PivotFields("Week Of")
+    Dim pi As PivotItem
+    
+    For Each pi In pf.PivotItems
+        '-> AL QUITAR ELEMENTOS DE LA BASE DE DATOS, SUCEDÍA QUE A PESAR DE QUE NO SALIAN DESPLEGADOS EN LA TABLA DINÁMICA
+        '-> DESPUÉS DE DAR REFRESH, SEGUÍAN ALMACENADOS DE ALGUNA FORMA PUES EL "For Each" LOS SEGUIA BUSCANDO,
+        '-> TUVE QUE DESMARCAR UNA OPCION: "NONE" EN "Retain items deleted form data source" en la tab "Data" de "Pivot Options"
+        'MsgBox (pi.Name)
+        pi.Visible = True
+    Next pi
+    
+End Sub
+
+'****/
+'* sub que acumula los valores de la fila indicada en un array empezando por x columna hasata el final de la fila
+'****\
+Public Sub recoger_valores_fila(fila As Integer, lista() As String, start_col As Integer, hoja As Excel.Worksheet, last_col As Integer)
+    
+    Dim num_titulos As Integer, i As Integer, end_col As Integer
+    'Determinar los límietes de la búsqueda
+    
+    num_titulos = last_col - start_col + 1
+    
+    ReDim lista(num_titulos - 1)
+    
+    For i = start_col To ((num_titulos - 1) + start_col)
+        lista(i - start_col) = hoja.Cells(fila, i).Value
+    Next i
+    
+End Sub
+
+'****/
+'* Pequeña rutina que copia y pega los valores del rango elegido
+'****\
+Public Sub copiar_pegar(rango_orig As Range, celda_destino As Range, destino As Excel.Worksheet)
+        
+    rango_orig.Select
+    selection.Copy
+    destino.Activate
+    celda_destino.Select
+    selection.PasteSpecial Paste:=xlPasteValues, Operation:=xlNone, SkipBlanks _
+            :=False, Transpose:=False
+    
+End Sub
+
+'****/
+'* Pequeña rutina que coloca los valores de menor a mayor de la columna elegida
+'****\
+Public Sub filtro_MM(ws As Excel.Worksheet, celda_filtro As Range) ', Mayor_menor As Boolean)
+
+    'Dim letsort As XlOrientation
+    
+    'If (Mayor_menor = True) Then
+        'letsor
+
+    ws.AutoFilter.Sort.SortFields.Add Key:=celda_filtro, _
+        SortOn:=xlSortOnValues, Order:=xlDescending, DataOption:=xlSortNormal
+    With ws.AutoFilter.Sort
+        .Header = xlYes
+        .MatchCase = False
+        .Orientation = xlTopToBottom
+        .SortMethod = xlPinYin
+        .Apply
+    End With
+    
+End Sub
+Public Sub filtro_menM(ws As Excel.Worksheet, celda_filtro As Range) ', Mayor_menor As Boolean)
+
+    ws.AutoFilter.Sort.SortFields.Add Key:=celda_filtro, _
+        SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
+    With ws.AutoFilter.Sort
+        .Header = xlYes
+        .MatchCase = False
+        .Orientation = xlTopToBottom
+        .SortMethod = xlPinYin
+        .Apply
+    End With
+    
+End Sub
+
+
+'****/
+'* La intención de la sub es que pueda tomar la fecha no importa donde
+'* cuando se llame un solo proceso
+'****\
+Public Sub fecha_en_cuestión(fecha As String)
+    fecha = helpers.Cells(2, 1).Value
+    verifica = MsgBox("Verificar que esta sea la fecha en cuestión :" & Chr(10) & Chr(10) & _
+        "----> " & fecha & Chr(10) & Chr(10) & _
+        "Si no es así, hacer click en NO" & Chr(10) & _
+        "Esto puede ser debido a que no se ha hecho aún la actualización de los recursos en el historial.", vbYesNo)
+    Select Case verifica
+        Case 7
+            MsgBox ("Se sale del proceso para que proceda con la actualización de la fecha")
+            End
+    End Select
+End Sub
+
+'****/
+'* Busca celdas vacías, elimina la completa fila formando parte de esa celda
+'* para quitar posibles blancos hasta llegar a un límite
+'* ¡¡ Lo malo, se podrían borrar cosas que no queremos si la columna que está leyendo no tiene inforamción
+'*     " Por mala suerte!!
+'* Otra manera es llegar por debajo y por arriba, comparar y cerificar que sean las mismas, si no, borrar
+'* ESTO ES UNICAMENTE RECOMENDABLE PARA BASES DE DATOS DONDE EL DISEÑO NO AFECTA EN ESTA BUSQUEDA
+'****\
+Public Sub buscar_espacios_en_rows(en_hoja As Excel.Worksheet, last_row As Integer, ByVal key_col As Integer, ByVal from_row As Integer)
+
+    Dim last_row_upper As Integer, last_row_down As Integer, row As Integer, search As String
+    
+    
+    last_row_upper = en_hoja.Cells(Rows.Count, key_col).End(xlUp).row
+    last_row_down = en_hoja.Cells(1, key_col).End(xlDown).row
+    row = last_row_down
+    
+    While ((last_row_upper <> last_row_down) And (search = Empty))
+        search = Cells(row + 1, key_col).Value
+        Rows(row + 1).Select
+        selection.Delete Shift:=xlUp
+        row = row + 1
+        last_row_down = en_hoja.Cells(row, key_col).End(xlDown).row
+    Wend
+    
+End Sub
+
+'****/
+'* Rutina que verifica que esté asertado el día en el que se está trabajando.
+'* Igualmente permitiendo al usuario de tomar la última palabra
+'* se aprovechará que los valores se pasan por referencia
+'****\
+Public Sub pruebaLogicaFecha(año, mes, dia)
+Dim fechaHelp As Date, fechaStudy As Date, temp As Integer
+    'tomar el valor de la fecha última
+    fechaHelp = Format(helpers.Cells(2, 1).Value, "yyyy-mm-dd")
+    'si el día es el que viene alto (> 12)
+    If (dia > 12) Then
+        'entonces dia es dia y mes mes, y se acabó, no se tiene que modificar nada
+        Exit Sub
+    End If
+    'por si el mes es el que viene alto
+    'esto para evitar errores en la parte de bajo (format pues noreconoce si el mes es superior a 12)
+    If (mes > 12) Then
+        temp = mes
+        mes = dia
+        dia = temp
+        Exit Sub
+    End If
+    
+    'si no pasa lo obvio, segunda prueba lógica
+    fechaStudy = Format(año & "-" & mes & "-" & dia, "yyyy-mm-dd")
+    resultado = (Abs(fechaStudy - fechaHelp) Mod 7) 'fechaHelp está como yyyy-mm-dd
+    If (resultado <> 0) Then
+        temp = mes
+        mes = dia
+        dia = temp
+    Else
+    'Esto sólo va a suceder con ciertas fechas
+    'Dadas las fechas con esta característica se puede hacer un análisis de
+    'cuáles son las más cercanas entre sí de acuerdo a la semana anterior
+    'La fecha "palindrome" con menos días de cercania son 2/3/2016 y 3/2/2016 dist=28dias
+    'Se asumirá entonces que la fecha ayuda estará al menos 2 semanas de diferencia de la otra fecha
+    'NOTA: A pesar de que se tienen fechas palindromes, ninguna cae en domingo como para preocuparse en un posoble error (verificar esto cada año)
+    
+    'En nuevo Analisis, poniendo como pivote una de las fechas deseadas (para entender si en efecto no va a salir 0) y hay varias donde si podría haber conflicto
+    'Para esto se realizó un análisis de cómo atacarlo y como última instancia preguntar al usuario por ingresar  la fecha deseada
+    'Lo que se encontró es que de las fechas donde se podría tener error, la fecha palíndrome no es divisible entre 0
+    'Haciendo esta prueba se queda aquella que sí sea divisible entre 0 tomando como pivote de la resta la fecha Help
+    
+    'Dim fechaStudyInver As Date
+    'fechaStudyInver = Format(año & "-" & dia & "-" & mes, "yyyy-mm-dd")
+        'colocar la más cercana a la fecha de estudio
+        Dim resUno As Integer, resDos As Integer, mesTemp As Integer, diaTemp As Integer, fechaPalindrome As Date
+        resUno = Abs(fechaHelp - fechaStudy)
+        fechaPalindrome = Format(año & "-" & dia & "-" & mes, "yyyy-mm-dd")
+        resDos = Abs(fechaHelp - fechaPalindrome)
+        If (resUno < resDos) Then 'significa que fechaStudy es la fecha más cercana y nada se mueve
+        Else 'Significa que fecha la fecha Palindrome es la más cercana, se tiene que tomar los datos de esta fecha
+            temp = mes
+            mes = dia
+            dia = temp
+        End If
+    End If
+
+End Sub
